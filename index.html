@@ -1,89 +1,245 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clamp - Enterprise Protocol</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <style>
+    :root {
+      --bg: #010205; --surface: rgba(10, 14, 23, 0.4);
+      --border: rgba(255, 255, 255, 0.05); --text: #ffffff;
+      --text-muted: #8b92a5; --accent: #8eAAff;
+      --font: 'Montserrat', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    
+    #page-overlay { position: fixed; inset: 0; background: #010205; z-index: 9999; pointer-events: none; }
+    #hero-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: auto; }
+    
+    nav { position: fixed; top: 0; width: 100%; padding: 24px 6vw; display: flex; justify-content: space-between; align-items: center; z-index: 100; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+    nav.scrolled { background: rgba(1,2,5,0.8); backdrop-filter: blur(30px); border-bottom: 1px solid var(--border); padding: 16px 6vw; }
+    .brand { display: flex; align-items: center; cursor: pointer; }
+    .brand img { height: 44px; object-fit: contain; transition: opacity 0.3s; }
+    .brand img:hover { opacity: 0.85; }
+    
+    .nav-links { display: flex; gap: 32px; align-items: center; }
+    .nav-links div, .nav-links .nl { color: var(--text-muted); font-size: 0.88rem; font-weight: 500; transition: 0.3s; cursor: pointer; text-decoration: none; }
+    .nav-links div:hover, .nav-links .nl:hover { color: var(--text); text-shadow: 0 0 10px rgba(255,255,255,0.4); }
+    
+    .nav-btn {
+       padding: 12px 28px; border-radius: 100px; font-weight: 600; font-size: 0.85rem; cursor: pointer; font-family: var(--font);
+       background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: var(--text);
+       transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); backdrop-filter: blur(10px);
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); transform: scale(1.05); }
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.12.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.12.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    .hero { min-height: 100vh; padding: 0 6vw; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 10; pointer-events: none; }
+    .hero-content { max-width: 680px; pointer-events: auto; }
+    .hero h1 { font-size: clamp(3.5rem, 6vw, 5.5rem); font-weight: 600; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 24px; background: linear-gradient(180deg, #FFFFFF 0%, rgba(200, 210, 255, 0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 40px rgba(142, 170, 255, 0.2)); }
+    .hero p { font-size: clamp(1.1rem, 1.3vw, 1.3rem); color: var(--text-muted); line-height: 1.6; margin-bottom: 48px; max-width: 580px; font-weight: 400; }
+    
+    .cta-group { display: flex; gap: 20px; align-items: center; }
+    .btn-primary { 
+       padding: 20px 48px; border-radius: 100px; border: none; font-family: var(--font); 
+       background: #fff; color: var(--bg); font-weight: 700; font-size: 1.05rem; cursor: pointer; 
+       transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 8px 30px rgba(142, 170, 255, 0.2); 
+    }
+    .btn-primary:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 40px rgba(142, 170, 255, 0.4); }
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+    /* Extra Advanced Sections */
+    .dark-section { padding: 120px 6vw; position: relative; z-index: 10; background: linear-gradient(180deg, transparent, #010205 10%, #010205 100%); }
+    .section-title { text-align: center; font-size: 2.5rem; margin-bottom: 80px; font-weight: 500; letter-spacing: -1px; }
+    
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 80px; }
+    .feat-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 24px; padding: 40px; transition: 0.4s; backdrop-filter: blur(20px); position: relative; overflow: hidden; }
+    .feat-card:hover { transform: translateY(-10px); background: rgba(255,255,255,0.04); border-color: rgba(142, 170, 255, 0.3); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .feat-card::after { content:''; position:absolute; top:0; left:0; width:100%; height:4px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; transition: 0.4s; }
+    .feat-card:hover::after { opacity: 1; }
+    .feat-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(142,170,255,0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+    .feat-card h3 { font-size: 1.3rem; margin-bottom: 12px; font-weight: 600; }
+    .feat-card p { color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; }
+
+    .spec-card { max-width: 1000px; margin: 0 auto; background: var(--surface); backdrop-filter: blur(24px); border: 1px solid var(--border); border-radius: 32px; padding: 60px; box-shadow: 0 40px 80px rgba(0,0,0,0.6); }
+    .spec-card h2 { font-size: 2.5rem; font-weight: 500; margin-bottom: 12px; letter-spacing: -0.02em; }
+    .spec-card .tag { display: inline-block; padding: 6px 16px; background: rgba(142,170,255,0.1); color: var(--accent); border-radius: 100px; font-size: 0.85rem; font-weight: 600; margin-bottom: 32px; border: 1px solid rgba(142,170,255,0.2); }
+    .spec-card p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.8; margin-bottom: 40px; font-weight: 400; }
+    
+    .pitch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .pitch-item { display: flex; flex-direction: column; gap: 8px; padding: 24px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid transparent; transition: 0.3s; }
+    .pitch-item:hover { background: rgba(255,255,255,0.04); border-color: rgba(142, 170, 255, 0.2); }
+    .p-title { font-size: 1.1rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .p-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; flex-shrink: 0; }
+    .p-text { font-size: 0.95rem; font-weight: 400; line-height: 1.6; color: var(--text-muted); }
+
+
+
+    footer { padding: 120px 0 60px 0; text-align:center; position:relative; z-index:10; background: #010205;}
+    @media (max-width: 900px) { .nav-links, .pitch-grid{ display: block; } .pitch-grid{grid-template-columns:1fr;} .hero { text-align: center; align-items: center; } }
+  </style>
+</head>
+<body>
+  
+  <div id="page-overlay"></div>
+  <div id="hero-canvas"></div>
+
+  <nav id="navbar">
+    <div class="brand" onclick="window.location.href='index.html'">
+      <img src="logo/clamp logo.png" alt="Clamp">
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+    <div class="nav-links" id="navProfile">
+      <a href="dashboard.html" class="nl">Claim Tracker</a>
+      <a href="fnol_flow.html" class="nl">File a Claim</a>
+      <a href="analyzer.html" class="nl">Policy Analyzer</a>
+      <a href="compare.html" class="nl">Policy Compare</a>
+      <button class="nav-btn" onclick="transitionTo('login.html')">Access Portal</button>
+    </div>
+  </nav>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="anim-hero">Intelligence.<br>Materialized.</h1>
+      <p class="anim-hero">Clamp utilizes advanced interface logic to streamline your enterprise experience. Zero long forms. Zero typing. Simply summarize your situation, and our AI dynamically architects an Enterprise Newgen payload in real time.</p>
+      <div class="cta-group anim-hero">
+        <button class="btn-primary" onclick="authCheckAndTransition()">Initiate Live Claim</button>
+        <button class="btn-primary" style="background:transparent; border:1px solid rgba(255,255,255,0.3); color:#fff; box-shadow:none;" onclick="authCheckAndTransition()">Track existing claim</button>
+      </div>
+    </div>
+  </section>
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
-        }
-      });
-    </script>
-  </body>
+  <section class="dark-section" id="specs">
+     <h2 class="section-title">Beyond Basic Forms</h2>
+     
+     <div class="grid-3">
+        <div class="feat-card">
+           <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+           <h3>Smart Automation</h3>
+           <p>We completely ditched predetermined click-menus. Our intelligent engine transcodes your input into a precise factual sequence automatically.</p>
+        </div>
+        <div class="feat-card">
+           <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+           <h3>Biometric Fraud Analysis</h3>
+           <p>Our mock framework operates conceptually to analyze vocal stress and cross-reference audio markers to rapidly categorize high-risk enterprise ledger anomalies.</p>
+        </div>
+        <div class="feat-card">
+           <div class="feat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+           <h3>Blockchain Handoff</h3>
+           <p>Claim generation isn't just an API call. Outputs are serialized dynamically and committed directly to transparent ledger infrastructure, reducing human approval bottlenecks.</p>
+        </div>
+     </div>
+
+
+
+     <div class="spec-card">
+        <div class="tag">Judge's Pitch Deck</div>
+        <h2>The Intelligence Core</h2>
+        <p>This is a purely Streamlined Interface engineered entirely without using complex forms. We solved the core challenge by utilizing an intelligent engine that organically morphs the UI based on the user's intent.</p>
+        
+        <div class="pitch-grid">
+           <div class="pitch-item">
+               <div class="p-title"><div class="p-icon">1</div> Intended User & Context</div>
+               <div class="p-text">Targeting users suffering extreme stress post-incident (accident, theft, injury). At this moment, cognitive load is low; navigating strict forms or dealing with robotic "I didn't understand that" chatbots causes immense friction. Clamp offers a calming, ambient listening presence.</div>
+           </div>
+           <div class="pitch-item">
+               <div class="p-title"><div class="p-icon">2</div> Conversational Interaction Model</div>
+               <div class="p-text">The user simply describes their reality naturally. Clamp processes the input, and instead of requiring complex inputs, it immediately condenses the unstructured data into a progressive-disclosure verified UI Card.</div>
+           </div>
+        </div>
+     </div>
+  </section>
+  
+  <footer>
+    <h2 style="font-size: 3rem; margin-bottom:30px;">Ready to initiate?</h2>
+    <button class="btn-primary" onclick="authCheckAndTransition()" style="padding: 16px 40px; font-size: 1rem;">Enter Clamp Nexus</button>
+  </footer>
+
+  <script>
+    function authCheckAndTransition() {
+       if(!localStorage.getItem('clamp_user')) {
+          alert('ACCESS DENIED: You must authenticate through the employee portal first.');
+          transitionTo('login.html');
+       } else {
+          transitionTo('dashboard.html');
+       }
+    }
+
+    gsap.registerPlugin(ScrollTrigger);
+    const easeStr = "cubic-bezier(0.16, 1, 0.3, 1)";
+    gsap.to('#page-overlay', { opacity: 0, duration: 1.5, ease: "power2.inOut" });
+    gsap.from(".anim-hero", { y: 40, opacity: 0, duration: 1.2, stagger: 0.15, ease: easeStr, delay: 0.2 });
+    
+    gsap.utils.toArray('.feat-card').forEach((card, i) => {
+       gsap.from(card, { y: 60, opacity: 0, duration: 1, delay: i * 0.1, scrollTrigger: { trigger: ".grid-3", start: "top 80%" } });
+    });
+    gsap.from(".spec-card", { y: 50, opacity: 0, duration: 1, scrollTrigger: { trigger: ".spec-card", start: "top 80%" } });
+
+
+    window.transitionTo = function(url) { gsap.to('#page-overlay', { opacity: 1, duration: 0.8, ease: "power2.inOut", onComplete: () => { window.location.href = url; }}); };
+    window.addEventListener('scroll', () => { document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50); });
+
+    // Set User details logically 
+    const u = localStorage.getItem('clamp_user');
+    if(u) {
+       document.getElementById('navProfile').innerHTML = `
+        <a href="dashboard.html" class="nl">Claim Tracker</a>
+        <a href="fnol_flow.html" class="nl">File a Claim</a>
+        <a href="analyzer.html" class="nl">Policy Analyzer</a>
+        <a href="compare.html" class="nl">Policy Compare</a>
+        <div style="color:var(--accent); display:flex; align-items:center; gap:8px; font-size:0.85rem;">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+           \${u}
+        </div>
+        <button class="nav-btn" onclick="transitionTo('dashboard.html')">Dashboard</button>
+       `;
+    }
+
+    /* Insane 3D Engine */
+    const container = document.getElementById('hero-canvas');
+    const sc = new THREE.Scene(); sc.fog = new THREE.FogExp2(0x010205, 0.04);
+    const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200); cam.position.z = 25;
+    const rend = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+    rend.setSize(window.innerWidth, window.innerHeight); rend.setPixelRatio(Math.min(window.devicePixelRatio, 2)); rend.setClearColor(0x010205, 1);
+    container.appendChild(rend.domElement);
+
+    const particleCount = 2000;
+    const geometry = new THREE.IcosahedronGeometry(0.15, 1);
+    const material = new THREE.MeshPhysicalMaterial({ color: 0x8eAAff, metalness: 0.8, roughness: 0.2, transmission: 0.5, clearcoat: 1.0, emissive: 0x112244 });
+    const instancedMesh = new THREE.InstancedMesh(geometry, material, particleCount); sc.add(instancedMesh);
+
+    const pointLight = new THREE.PointLight(0xffffff, 4, 100); sc.add(pointLight);
+    sc.add(new THREE.AmbientLight(0x010205, 2));
+
+    let dummy = new THREE.Object3D(), mX = 0, mY = 0, scrollY = 0;
+    document.addEventListener('mousemove', e => { mX = (e.clientX / window.innerWidth) * 2 - 1; mY = -(e.clientY / window.innerHeight) * 2 + 1; });
+    window.addEventListener('scroll', () => { scrollY = window.scrollY; });
+
+    let time = 0;
+    function animate3D() {
+      requestAnimationFrame(animate3D); time += 0.002;
+      const scrollOffset = scrollY * 0.01;
+      for (let i = 0; i < particleCount; i++) {
+        const t = (i / particleCount) * Math.PI * 100 + time; 
+        const radius = 5 + Math.sin(t * 0.2) * 2;
+        let x = Math.sin(t) * radius, y = (i / particleCount) * 100 - 50 + scrollOffset, z = Math.cos(t) * radius;
+        const dx = mX * 20 - x, dy = mY * 20 - y, dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 10) { x -= (dx / dist) * (10 - dist) * 0.1; z -= (dy / dist) * (10 - dist) * 0.1; }
+        dummy.position.set(x, y, z);
+        dummy.rotation.x = time + i * 0.01; dummy.rotation.y = time + i * 0.02;
+        const scale = 1 + Math.sin(time * 10 + i * 0.1) * 0.5 + (dist < 10 ? 2 : 0);
+        dummy.scale.set(scale, scale, scale); dummy.updateMatrix(); instancedMesh.setMatrixAt(i, dummy.matrix);
+      }
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      instancedMesh.rotation.y = time * 0.5 + mX * 0.2; instancedMesh.rotation.x = mY * 0.2;
+      pointLight.position.x += (mX * 30 - pointLight.position.x) * 0.05; pointLight.position.y += (mY * 30 - pointLight.position.y) * 0.05;
+      rend.render(sc, cam);
+    }
+    animate3D();
+    window.addEventListener('resize', () => { cam.aspect = window.innerWidth / window.innerHeight; cam.updateProjectionMatrix(); rend.setSize(window.innerWidth, window.innerHeight); });
+  </script>
+</body>
 </html>
