@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clamp — File a Claim</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/TextPlugin.min.js"></script>
+  <script src="mock_api.js"></script>
+  <script>if (!localStorage.getItem('clamp_user')) { window.location.href = 'login.html'; }</script>
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+      --text: #f0f0f8; --text-muted: #6b7280; --text-sub: #9ca3af;
+      --orange: #f97316; --orange-glow: rgba(249,115,22,0.15); --orange-dim: rgba(249,115,22,0.08);
+      --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --accent: #818cf8;
+      --font: 'Inter', sans-serif; --ease: cubic-bezier(0.16,1,0.3,1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; }
+
+    /* ── SIDEBAR ── */
+    .sidebar { width: 260px; min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; padding: 0 0 24px 0; }
+    .sidebar-logo { padding: 20px 24px; display: flex; align-items: center; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .sidebar-logo img { width: 120px; height: 48px; object-fit: contain; }
+    .sidebar-section-label { padding: 20px 24px 8px; font-size: 0.7rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; margin: 2px 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s; color: var(--text-sub); font-size: 0.875rem; font-weight: 500; text-decoration: none; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .nav-item.active { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(249,115,22,0.2); }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .sidebar-bottom { margin-top: auto; padding: 16px 24px; }
+    .sidebar-user { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--orange-glow); border: 1px solid var(--orange); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: var(--orange); flex-shrink: 0; }
+    .user-name { font-size: 0.85rem; font-weight: 600; }
+    .user-role { font-size: 0.72rem; color: var(--text-muted); }
+
+    /* ── MAIN ── */
+    .main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; }
+    .topbar { width: 100%; padding: 20px 36px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-size: 1.1rem; font-weight: 700; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+    .icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .icon-btn svg { width: 17px; height: 17px; }
+    .page-content { padding: 40px 36px; flex: 1; display: flex; align-items: flex-start; justify-content: center; }
+
+    /* ── FLOW LAYOUT ── */
+    .flow-wrap { width: 100%; max-width: 600px; }
+
+    /* Progress */
+    .step-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .step-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); letter-spacing: 0.5px; }
+    .progress-bar { height: 3px; background: var(--border); border-radius: 999px; margin-bottom: 32px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--orange), #fb923c); border-radius: 999px; transition: width 0.5s var(--ease); }
+
+    /* Cards */
+    .view-card { display: none; flex-direction: column; animation: fadeUp 0.4s ease forwards; }
+    .view-card.active { display: flex; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+    .card-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px 36px; margin-bottom: 16px; }
+
+    h2 { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+    p.sub { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 24px; line-height: 1.6; }
+
+    /* Domain grid */
+    .domain-grid { display: grid; gap: 12px; }
+    .domain-btn { padding: 18px 20px; border-radius: 14px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-family: var(--font); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: left; display: flex; align-items: center; gap: 14px; }
+    .domain-btn:not(.disabled):hover { border-color: var(--orange); background: var(--orange-dim); color: var(--orange); }
+    .domain-btn.disabled { opacity: 0.35; cursor: not-allowed; }
+    .domain-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    /* ── VOICE ENGINE ── */
+    .voice-stage { display: flex; flex-direction: column; align-items: center; padding: 16px 0 8px; }
+
+    /* Orb */
+    .ai-core { width: 120px; height: 120px; position: relative; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.5s var(--ease); border-radius: 50%; margin-bottom: 20px; }
+    .ai-core:hover { transform: scale(1.05); }
+    .orb-layer { position: absolute; border-radius: 50%; inset: 0; background: conic-gradient(from 0deg, transparent, rgba(249,115,22,0.8), transparent); filter: blur(10px); opacity: 0.4; transition: 0.5s; mix-blend-mode: screen; }
+    .orb-layer.l1 { animation: spin 4s linear infinite; }
+    .orb-layer.l2 { inset: 10px; animation: spin 3s linear infinite reverse; background: conic-gradient(from 180deg, transparent, rgba(255,200,100,0.6), transparent); filter: blur(5px); }
+    .mic-icon-wrapper { position: relative; z-index: 10; width: 62px; height: 62px; background: var(--bg); border: 1px solid var(--border2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text); transition: 0.4s var(--ease); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+    .ai-core.recording .orb-layer { opacity: 1; filter: blur(15px); }
+    .ai-core.recording .orb-layer.l1 { animation: rapidPulse 0.5s ease-in-out infinite alternate, spin 1s linear infinite; }
+    .ai-core.recording .mic-icon-wrapper { background: var(--orange); border-color: var(--orange); color: #fff; transform: scale(1.1); box-shadow: 0 0 24px var(--orange-glow); }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes rapidPulse { 0% { transform: scale(1); opacity:0.8; } 100% { transform: scale(1.4); opacity:1; } }
+
+    /* Wave bars */
+    .wave-container { display: flex; gap: 4px; height: 32px; align-items: center; opacity: 0; transition: 0.3s; margin-bottom: 16px; }
+    .wave-container.active { opacity: 1; }
+    .bar { width: 3px; background: var(--orange); border-radius: 2px; transition: height 0.1s ease; height: 6px; }
+
+    #transcription-text { font-size: 0.95rem; text-align: center; min-height: 64px; font-weight: 400; line-height: 1.6; color: var(--text); padding: 0 8px; }
+
+    .mic-status { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-bottom: 16px; letter-spacing: 0.3px; text-align: center; }
+
+    .instructions-box { width: 100%; padding: 14px 18px; background: rgba(249,115,22,0.05); border: 1px solid rgba(249,115,22,0.12); border-radius: 14px; }
+    .instructions-box strong { color: var(--orange); font-weight: 600; display: block; margin-bottom: 8px; font-size: 0.82rem; }
+    .instructions-box ul { padding-left: 18px; color: var(--text-muted); font-size: 0.82rem; line-height: 1.7; }
+
+    .voice-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+
+    /* Protocol selector tabs */
+    .protocol-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .ptab { flex: 1; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface2); font-family: var(--font); font-size: 0.82rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; }
+    .ptab.active { background: var(--orange-dim); color: var(--orange); border-color: rgba(249,115,22,0.3); }
+
+    /* Type-mode textarea */
+    #typeInputContainer { display: none; flex-direction: column; }
+    #manualTextArea { width: 100%; height: 150px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--font); padding: 16px; border-radius: 14px; outline: none; resize: none; font-size: 0.9rem; line-height: 1.6; transition: 0.2s; margin-bottom: 14px; }
+    #manualTextArea:focus { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-dim); }
+
+    /* Analysis / NLP output */
+    .analytics-panel { display: flex; gap: 8px; margin-bottom: 16px; }
+    .metric-badge { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+    .metric-val { font-size: 1.15rem; font-weight: 800; color: var(--orange); margin-bottom: 4px; }
+    .metric-lbl { font-size: 0.64rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    .nlp-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.875rem; }
+    .data-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .data-row.error .d-label { color: var(--danger); }
+    .data-row.error .d-val { color: var(--danger) !important; background: rgba(239,68,68,0.08); }
+    .d-label { color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+    .d-val { font-weight: 600; background: var(--orange-dim); padding: 5px 12px; border-radius: 8px; color: var(--orange); max-width: 60%; text-align: right; line-height: 1.4; font-size: 0.83rem; }
+
+    /* Form fields */
+    .field-wrap { margin-bottom: 16px; }
+    .flabel { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 7px; display: block; }
+    input.field, select.field, textarea.field { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--font); padding: 12px 16px; border-radius: 12px; outline: none; font-size: 0.9rem; transition: all 0.2s; }
+    input.field:focus, select.field:focus, textarea.field:focus { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-dim); }
+    select.field option { background: #1a1a26; }
+
+    /* Confirm card */
+    .data-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+    .data-card .data-row .d-val { color: var(--orange); background: var(--orange-dim); }
+
+    /* Doc upload */
+    .doc-item { position: relative; padding: 16px; background: var(--surface2); border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border); transition: 0.2s; }
+    .doc-item:hover { border-color: var(--border2); }
+    .doc-flex { display: flex; align-items: center; justify-content: space-between; }
+    .doc-item input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+    .upload-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--orange); width: 0%; transition: 0.2s; border-radius: 0 0 12px 12px; }
+    .doc-status { color: var(--orange); font-weight: 600; font-size: 0.82rem; }
+
+    /* Summary */
+    .summary-section { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .summary-header { padding: 9px 16px; font-weight: 700; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--orange); background: var(--orange-dim); border-bottom: 1px solid var(--border); }
+    .summary-body { padding: 12px 16px; display: grid; gap: 7px; }
+    .summary-kv { display: flex; justify-content: space-between; font-size: 0.84rem; }
+    .sk { color: var(--text-muted); }
+
+    /* Buttons */
+    .btn-group { display: flex; gap: 10px; flex-direction: column; }
+    .btn-group.row { flex-direction: row; }
+    .btn { padding: 14px; border-radius: 12px; font-family: var(--font); font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: all 0.2s; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+    .btn-primary { background: var(--orange); color: #fff; }
+    .btn-primary:hover { background: #ea6c0c; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(249,115,22,0.35); }
+    .btn-primary.disabled { opacity: 0.5; pointer-events: none; }
+    .btn-outline { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-sub); }
+    .btn-outline:hover { background: rgba(255,255,255,0.07); color: #fff; }
+    .btn-sm { padding: 9px 18px; font-size: 0.8rem; width: auto; }
+
+    /* Success */
+    .success-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(34,197,94,0.12); border: 2px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(10,10,20,0.95); backdrop-filter: blur(20px); border: 1px solid var(--border2); border-radius: 50px; padding: 12px 26px; display: flex; align-items: center; gap: 10px; font-size: 0.83rem; font-weight: 500; color: #fff; opacity: 0; transition: all 0.4s var(--ease); z-index: 9999; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo" onclick="window.location.href='index.html'">
+      <img src="logo/clamp logo.png" alt="Clamp Logo">
+    </div>
+    <div class="sidebar-section-label">Navigation</div>
+    <a class="nav-item" href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Claim Tracker
+    </a>
+    <a class="nav-item active" href="fnol_flow.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      File a Claim
+    </a>
+    <a class="nav-item" href="analyzer.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      Policy Analyzer
+    </a>
+    <a class="nav-item" href="compare.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Policy Compare
+    </a>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="avatarInitials">U</div>
+        <div>
+          <div class="user-name" id="sidebarUserName">User</div>
+          <div class="user-role">Clamp Member</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">File a Claim</div>
+      <div style="display:flex; gap:10px;">
+        <div class="icon-btn" title="Back to Tracker" onclick="window.location.href='dashboard.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="flow-wrap">
+
+        <!-- Progress -->
+        <div class="step-meta">
+          <div class="step-label" id="stepLabel">Step 1 of 8</div>
+          <div class="step-label" id="stepName">Select Domain</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:12%"></div></div>
+
+        <!-- ── STEP 0: Domain ── -->
+        <div class="view-card active" id="v-0">
+          <div class="card-box">
+            <h2>Start Your Claim</h2>
+            <p class="sub">Select your insurance domain to begin the AI-guided claim process.</p>
+            <div class="domain-grid">
+              <button class="domain-btn" onclick="beginClaim()">
+                <div class="domain-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" width="20" height="20"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+                <div>
+                  <div style="font-weight:700; margin-bottom:2px;">Motor Insurance</div>
+                  <div style="font-size:0.78rem; color:var(--text-muted); font-weight:400;">Accident, Theft, Damage</div>
+                </div>
+              </button>
+              <button class="domain-btn disabled">
+                <div class="domain-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+                <div><div style="font-weight:700; margin-bottom:2px;">Health Insurance</div><div style="font-size:0.78rem; color:var(--text-muted); font-weight:400;">Coming soon</div></div>
+              </button>
+              <button class="domain-btn disabled">
+                <div class="domain-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+                <div><div style="font-weight:700; margin-bottom:2px;">Travel Insurance</div><div style="font-size:0.78rem; color:var(--text-muted); font-weight:400;">Coming soon</div></div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 1: Protocol Picker ── -->
+        <div class="view-card" id="v-1">
+          <div class="card-box">
+            <h2>Choose Input Mode</h2>
+            <p class="sub">Clamp's AI agent can listen to you speak or read your text — and automatically fill your claim form.</p>
+            <div class="btn-group">
+              <button class="btn btn-primary" onclick="setProtocol('voice')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                I'll tell Clamp AI what happened (Voice)
+              </button>
+              <button class="btn btn-outline" onclick="setProtocol('type')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                I prefer to type my incident
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 2: Voice / Type Capture ── -->
+        <div class="view-card" id="v-2">
+          <div class="card-box">
+
+            <!-- VOICE MODE -->
+            <div id="voiceModeUI">
+              <h2>Tell us what happened</h2>
+              <p class="sub">Tap the orb and speak naturally. Clamp AI will extract all claim details from your words.</p>
+
+              <div class="voice-stage">
+                <div class="ai-core" id="mainMic" onclick="toggleMic()">
+                  <div class="orb-layer l1"></div>
+                  <div class="orb-layer l2"></div>
+                  <div class="mic-icon-wrapper">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                  </div>
+                </div>
+
+                <p class="mic-status" id="micStatusText">Tap orb to start recording</p>
+
+                <div class="wave-container" id="wave">
+                  <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                  <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                  <div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <div id="transcription-text">Your words will appear here as you speak...</div>
+              </div>
+
+              <div class="instructions-box" style="margin-top:16px;">
+                <strong>For best results, include:</strong>
+                <ul>
+                  <li>What exactly happened (accident, theft, damage)</li>
+                  <li>Location — road, street, city</li>
+                  <li>When it happened — date, time</li>
+                  <li>Severity — minor dent, total loss, injuries</li>
+                </ul>
+              </div>
+
+              <div class="voice-actions">
+                <button class="btn btn-primary btn-sm" onclick="processTextSubmission('voice')">Done Speaking ✓</button>
+                <button class="btn btn-outline btn-sm" onclick="triggerMicFallback()">Demo (Auto-fill)</button>
+              </div>
+            </div>
+
+            <!-- TYPE MODE -->
+            <div id="typeModeUI" style="display:none;">
+              <h2>Describe the incident</h2>
+              <p class="sub">Write naturally — Clamp AI will extract all details from your text.</p>
+              <textarea id="manualTextArea" placeholder="E.g., I was driving on National Highway 48 around 8pm when a truck hit my car from behind. My rear bumper is completely damaged..."></textarea>
+              <div class="instructions-box" style="margin-bottom:16px;">
+                <strong>For best results, include:</strong>
+                <ul>
+                  <li>Location (road/street name)</li>
+                  <li>Time and date</li>
+                  <li>Type and severity of damage</li>
+                </ul>
+              </div>
+              <button class="btn btn-primary" onclick="processTextSubmission('type')">Analyse with Clamp AI →</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── STEP 3: NLP Processing ── -->
+        <div class="view-card" id="v-3">
+          <div class="card-box" style="text-align:center; padding:48px 36px;">
+            <div class="ai-core recording" style="pointer-events:none; margin: 0 auto 24px;">
+              <div class="orb-layer l1"></div>
+              <div class="orb-layer l2"></div>
+            </div>
+            <h2 id="proc-text">Analysing your narration...</h2>
+            <p class="sub">Clamp AI is extracting incident type, location, severity, and timestamps.</p>
+          </div>
+        </div>
+
+        <!-- ── STEP 4: NLP Results ── -->
+        <div class="view-card" id="v-4">
+          <div class="card-box">
+            <h2 id="nlp-heading">Extraction Complete</h2>
+            <p class="sub" id="nlp-sub">Here's what Clamp AI understood from your description. Review and confirm.</p>
+
+            <div class="analytics-panel">
+              <div class="metric-badge"><div class="metric-val" id="met-comp">—</div><div class="metric-lbl">Completeness</div></div>
+              <div class="metric-badge"><div class="metric-val" id="met-fraud" style="color:var(--success)">Low</div><div class="metric-lbl">Fraud Risk</div></div>
+              <div class="metric-badge"><div class="metric-val" id="met-sent">—</div><div class="metric-lbl">Severity</div></div>
+            </div>
+
+            <div class="nlp-card" id="extractionRows"></div>
+
+            <div class="btn-group row">
+              <button class="btn btn-outline" style="flex:1;" onclick="navTo(2)">← Re-record</button>
+              <button class="btn btn-primary" style="flex:2;" id="nlpProceedBtn" onclick="proceedFromNLP()">Confirm & Continue →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 5: Follow-up (missing data) ── -->
+        <div class="view-card" id="v-5">
+          <div class="card-box">
+            <h2 id="fup-heading" style="color:var(--warning)">Missing Information</h2>
+            <p class="sub" id="fup-sub">Please fill in the details that couldn't be extracted from your narration.</p>
+
+            <div class="field-wrap" id="fup-loc-wrap">
+              <label class="flabel" id="fup-q1">Exact location / road name?</label>
+              <input type="text" class="field" id="followUpInput" placeholder="e.g. NH-48, near Mahipalpur">
+            </div>
+
+            <div class="field-wrap" id="fup-fir-wrap" style="display:none;">
+              <label class="flabel">Was a police/FIR report filed?</label>
+              <select class="field" id="firInput">
+                <option value="">Select...</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+                <option value="Not sure">Not sure</option>
+              </select>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn btn-primary" onclick="validateFollowUp()">Save & Continue →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 6: Policy Lookup ── -->
+        <div class="view-card" id="v-6">
+          <div class="card-box">
+            <h2>Verify Your Policy</h2>
+            <p class="sub">Enter your mobile number or policy number so we can link your claim to your policy.</p>
+            <div class="field-wrap">
+              <label class="flabel">Mobile / Policy Number</label>
+              <input type="text" class="field" id="simIdentifier" placeholder="Try: 9876543210">
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" onclick="lookupPolicy()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Find My Policy
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 7: Policy Confirm ── -->
+        <div class="view-card" id="v-7">
+          <div class="card-box">
+            <h2>Policy Found</h2>
+            <p class="sub">We matched your details. Please confirm before proceeding.</p>
+            <div class="data-card">
+              <div class="data-row"><span class="d-label">Insured Name</span><span class="d-val" id="af-name">—</span></div>
+              <div class="data-row"><span class="d-label">Vehicle</span><span class="d-val" id="af-veh">—</span></div>
+              <div class="data-row"><span class="d-label">Policy No.</span><span class="d-val" id="af-pol">—</span></div>
+              <div class="data-row"><span class="d-label">Insurer</span><span class="d-val" id="af-ins">—</span></div>
+            </div>
+            <div class="btn-group row">
+              <button class="btn btn-outline" style="flex:1;" onclick="navTo(6)">← Retry</button>
+              <button class="btn btn-primary" style="flex:2;" onclick="navTo(8)">Confirm & Continue →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 8: Evidence Upload ── -->
+        <div class="view-card" id="v-8">
+          <div class="card-box">
+            <h2>Evidence Library</h2>
+            <p class="sub">Upload supporting documents. RC Book, Driving Licence, and incident photos.</p>
+
+            <div class="doc-item">
+              <input type="file" accept="image/*,.pdf" onchange="docUpload(this,'rc','du-rc')">
+              <div class="upload-progress" id="up-rc"></div>
+              <div class="doc-flex">
+                <div><div style="font-weight:600; font-size:0.9rem;">Registration Certificate (RC)</div><div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">PDF or image</div></div>
+                <span class="doc-status" id="du-rc">Upload</span>
+              </div>
+            </div>
+            <div class="doc-item">
+              <input type="file" accept="image/*,.pdf" onchange="docUpload(this,'dl','du-dl')">
+              <div class="upload-progress" id="up-dl"></div>
+              <div class="doc-flex">
+                <div><div style="font-weight:600; font-size:0.9rem;">Driving Licence</div><div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">PDF or image</div></div>
+                <span class="doc-status" id="du-dl">Upload</span>
+              </div>
+            </div>
+            <div class="doc-item">
+              <input type="file" accept="image/*" multiple onchange="docUpload(this,'photos','du-photos')">
+              <div class="upload-progress" id="up-photos"></div>
+              <div class="doc-flex">
+                <div><div style="font-weight:600; font-size:0.9rem;">Incident Photos</div><div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">Multiple images</div></div>
+                <span class="doc-status" id="du-photos">Upload</span>
+              </div>
+            </div>
+
+            <div class="btn-group row" style="margin-top:20px;">
+              <button class="btn btn-outline" style="flex:1;" onclick="renderSummary(); navTo(9)">Skip</button>
+              <button class="btn btn-primary" style="flex:2;" onclick="renderSummary(); navTo(9)">Review Claim →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 9: Summary ── -->
+        <div class="view-card" id="v-9">
+          <div class="card-box">
+            <h2>Claim Summary</h2>
+            <p class="sub">Review all extracted and confirmed details before submitting to the IRDAI ledger.</p>
+            <div id="summary-render"></div>
+            <button class="btn btn-primary" id="btnFinalSubmit" onclick="finalSubmit()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Submit to Ledger
+            </button>
+          </div>
+        </div>
+
+        <!-- ── STEP 10: Success ── -->
+        <div class="view-card" id="v-10">
+          <div class="card-box" style="text-align:center;">
+            <div class="success-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" width="36" height="36"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h2 style="color:var(--success);">Claim Dispatched</h2>
+            <p class="sub" style="margin-bottom:20px;">Your payload has been signed and posted to the IRDAI ledger.</p>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:24px;">
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">Claim Reference</div>
+              <div style="font-size:1.3rem; font-weight:800; color:var(--orange);" id="finalClaimId">—</div>
+            </div>
+            <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">View in Tracker →</button>
+          </div>
+        </div>
+
+      </div><!-- /flow-wrap -->
+    </div><!-- /page-content -->
+  </div><!-- /main -->
+
+  <div class="toast" id="toast"><span class="toast-dot"></span><span id="tmsg"></span></div>
+
+  <script>
+    gsap.registerPlugin(TextPlugin);
+
+    // ─── User ───
+    const u = localStorage.getItem('clamp_user');
+    if(u) {
+      document.getElementById('sidebarUserName').textContent = u;
+      document.getElementById('avatarInitials').textContent = u.charAt(0).toUpperCase();
+    }
+
+    // ─── Claim state ───
+    let claimState = {
+      user: {}, policy: {}, vehicle: {},
+      incident: { type:'', when:'', where:'', description:'', severity:'' },
+      conditional: { firFiled:'', firNumber:'', otherVehicle:'', injuries:'' },
+      nlp: { raw:'', completeness:0, fraudRisk:'Low', stressIndex:'' },
+      documents: { rc:null, dl:null, photos:null }
+    };
+
+    // ─── Step navigation ───
+    let curr = 0;
+    const TOTAL = 10;
+    const stepNames = [
+      'Select Domain','Choose Input Mode','Narrate Incident','Analysing','Review Extraction',
+      'Fill Missing Info','Policy Lookup','Confirm Policy','Upload Evidence','Review & Submit','Done'
+    ];
+
+    function navTo(id) {
+      if(id === curr) return;
+      document.getElementById(`v-${curr}`).classList.remove('active');
+      document.getElementById(`v-${id}`).classList.add('active');
+      curr = id;
+      const pct = Math.round((id / (TOTAL - 1)) * 100);
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('stepLabel').textContent = `Step ${id + 1} of ${TOTAL}`;
+      document.getElementById('stepName').textContent = stepNames[id] || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if(id === 3) {
+        setTimeout(() => runExtremeNLP(capturedText), 600);
+      }
+    }
+
+    // ─── Protocol / Mode ───
+    let inputMode = 'voice';
+    function beginClaim() { navTo(1); }
+    function setProtocol(mode) {
+      inputMode = mode;
+      document.getElementById('voiceModeUI').style.display = mode === 'voice' ? 'block' : 'none';
+      document.getElementById('typeModeUI').style.display  = mode === 'type'  ? 'block' : 'none';
+      navTo(2);
+      if(mode === 'voice') runVoiceBot("Tap the orb when you are ready to speak.");
+    }
+
+    // ─── TTS ───
+    const synth = window.speechSynthesis;
+    function runVoiceBot(msg) {
+      if(synth.speaking) synth.cancel();
+      const u = new SpeechSynthesisUtterance(msg);
+      u.rate = 1.05; u.pitch = 1;
+      synth.speak(u);
+    }
+
+    // ─── Web Speech API ───
+    let isMic = false, waveInterval, recognition, liveTranscript = "", capturedText = "";
+    const coreObj = document.getElementById('mainMic');
+    const waveObj = document.getElementById('wave');
+    const transTextObj = document.getElementById('transcription-text');
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SR();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN';
+
+      recognition.onresult = function(event) {
+        let interim = '', finalT = '';
+        for(let i = event.resultIndex; i < event.results.length; ++i) {
+          if(event.results[i].isFinal) finalT += event.results[i][0].transcript;
+          else interim += event.results[i][0].transcript;
+        }
+        liveTranscript += finalT;
+        transTextObj.innerText = liveTranscript + interim;
+      };
+
+      recognition.onend = function() { if(isMic) { try { recognition.start(); } catch(e){} } };
+
+      recognition.onerror = function(event) {
+        if(event.error === 'not-allowed') {
+          isMic = false; clearInterval(waveInterval);
+          coreObj.classList.remove('recording'); waveObj.classList.remove('active');
+          showToast("Mic blocked. Allow microphone or use Demo button.", true);
+        }
+      };
+    }
+
+    function toggleMic() {
+      if(!recognition) { showToast("Browser lacks Speech API. Use Chrome or Safari.", true); return; }
+      isMic = !isMic;
+      if(isMic) {
+        liveTranscript = ""; transTextObj.innerText = "";
+        coreObj.classList.add('recording'); waveObj.classList.add('active');
+        document.getElementById('micStatusText').innerText = "Recording... speak now";
+        const bars = document.querySelectorAll('.bar');
+        waveInterval = setInterval(() => { bars.forEach(b => b.style.height = `${Math.random()*24 + 6}px`); }, 100);
+        try { recognition.start(); } catch(e){}
+        showToast("Microphone active — speak clearly.");
+      } else {
+        isMic = false; try { recognition.stop(); } catch(e){}
+        clearInterval(waveInterval);
+        coreObj.classList.remove('recording'); waveObj.classList.remove('active');
+        document.querySelectorAll('.bar').forEach(b => b.style.height = '6px');
+        document.getElementById('micStatusText').innerText = "Recording stopped";
+        showToast("Recording stopped. Review or say Done.");
+      }
+    }
+
+    // ─── Demo fallback ───
+    function triggerMicFallback() {
+      if(isMic) toggleMic();
+      liveTranscript = "";
+      transTextObj.innerText = "";
+      coreObj.classList.add('recording'); waveObj.classList.add('active');
+      document.getElementById('micStatusText').innerText = "Demo mode running...";
+      const bars = document.querySelectorAll('.bar');
+      waveInterval = setInterval(() => { bars.forEach(b => b.style.height = `${Math.random()*24 + 6}px`); }, 100);
+
+      gsap.to(transTextObj, {
+        text: "I was rear-ended on National Highway 48 near Mahipalpur around 9 PM last night. A black SUV hit my car from behind and smashed my rear bumper completely. The other vehicle drove away. No injuries but the damage is severe.",
+        duration: 4, ease: "none",
+        onComplete: () => {
+          clearInterval(waveInterval);
+          coreObj.classList.remove('recording'); waveObj.classList.remove('active');
+          document.querySelectorAll('.bar').forEach(b => b.style.height = '6px');
+          document.getElementById('micStatusText').innerText = "Demo complete";
+          showToast("Demo narration complete. Tap Done to analyse.");
+        }
+      });
+    }
+
+    // ─── Process & go to NLP ───
+    function processTextSubmission(mode) {
+      if(isMic) {
+        isMic = false; try { recognition.stop(); } catch(e){}
+        clearInterval(waveInterval);
+        coreObj.classList.remove('recording'); waveObj.classList.remove('active');
+      }
+      const txt = mode === 'voice'
+        ? transTextObj.innerText
+        : document.getElementById('manualTextArea').value;
+
+      if(!txt || txt.trim().length < 5) {
+        showToast("Please provide more detail before continuing.", true);
+        runVoiceBot("I didn't catch that. Please speak or type more detail.");
+        return;
+      }
+      capturedText = txt.trim();
+      claimState.nlp.raw = capturedText;
+      navTo(3); // → processing screen, then NLP fires
+    }
+
+    // ─── NLP Engine ───
+    let nlpBlocksNext = false;
+
+    function runExtremeNLP(txt) {
+      const low = txt.toLowerCase();
+      nlpBlocksNext = false;
+
+      // Incident type
+      let inc = "Unspecified";
+      if(low.match(/(accident|hit|crash|rear|collide|collision|bump|smash)/)) inc = "Vehicle Collision";
+      if(low.match(/(theft|stolen|rob|break.in|thief)/)) inc = "Vehicle Theft";
+      if(low.match(/(fire|burn|blast)/)) inc = "Fire Damage";
+      if(low.match(/(flood|water|submer)/)) inc = "Flood Damage";
+
+      // Severity
+      let sev = "Standard", sevColor = "var(--text)";
+      if(low.match(/(total loss|complete|destroy|severe|blood|injur|hospital|smash)/)) { sev = "High"; sevColor = "var(--danger)"; }
+      else if(low.match(/(dent|scratch|minor|small|light|slight)/)) { sev = "Low"; sevColor = "var(--success)"; }
+      else { sev = "Medium"; sevColor = "var(--warning)"; }
+
+      // Location
+      let loc = null;
+      const locMatch = low.match(/(highway|nh|road|street|avenue|parking|drive|lane|market|flyover|junction|chowk|nagar|marg|bypass|express)/);
+      if(locMatch) {
+        // try to extract more context around the match
+        const idx = low.indexOf(locMatch[0]);
+        loc = "Detected near " + locMatch[0].toUpperCase() + " area";
+      } else { nlpBlocksNext = true; }
+
+      // Time
+      let time = null;
+      if(low.match(/([0-9]+\s*(am|pm|o'clock)|morning|night|afternoon|evening|tonight|yesterday|today|last night)/)) {
+        time = "Timestamp verified via context";
+      } else { nlpBlocksNext = true; }
+
+      // Push into claimState
+      claimState.incident.type        = inc;
+      claimState.incident.severity    = sev;
+      claimState.incident.where       = loc  || "";
+      claimState.incident.when        = time || "";
+      claimState.incident.description = txt;
+
+      // Completeness score
+      const comp = nlpBlocksNext
+        ? (txt.length > 30 ? 55 : 30)
+        : (txt.length > 60 ? 98 : 82);
+      claimState.nlp.completeness = comp;
+      claimState.nlp.stressIndex  = sev;
+
+      // Render
+      document.getElementById('met-comp').textContent  = comp + "%";
+      document.getElementById('met-comp').style.color  = comp >= 80 ? "var(--success)" : "var(--warning)";
+      document.getElementById('met-fraud').textContent = "Low";
+      document.getElementById('met-sent').textContent  = sev;
+      document.getElementById('met-sent').style.color  = sevColor;
+
+      document.getElementById('extractionRows').innerHTML = `
+        <div class="data-row"><span class="d-label">Incident Type</span><span class="d-val">${inc}</span></div>
+        <div class="data-row ${!loc ? 'error' : ''}"><span class="d-label">Location</span><span class="d-val">${loc || 'Missing — please fill in'}</span></div>
+        <div class="data-row ${!time ? 'error' : ''}"><span class="d-label">Timestamp</span><span class="d-val">${time || 'Missing — please fill in'}</span></div>
+        <div class="data-row"><span class="d-label">Severity</span><span class="d-val" style="color:${sevColor}; background:rgba(255,255,255,0.05)">${sev}</span></div>
+      `;
+
+      if(nlpBlocksNext) {
+        document.getElementById('nlp-heading').textContent = "Incomplete Extraction";
+        document.getElementById('nlp-heading').style.color = "var(--warning)";
+        document.getElementById('nlp-sub').textContent = "Some details couldn't be extracted. You'll be asked to fill them in next.";
+        runVoiceBot("Some details are missing. Please review and fill in the location and time.");
+      } else {
+        document.getElementById('nlp-heading').textContent = "Extraction Complete";
+        document.getElementById('nlp-heading').style.color = "var(--success)";
+        document.getElementById('nlp-sub').textContent = "Clamp AI extracted all key claim details. Confirm to continue.";
+        runVoiceBot("Extraction successful. Please review the details and confirm.");
+      }
+
+      navTo(4); // show results
+    }
+
+    // ─── Proceed from NLP results ───
+    function proceedFromNLP() {
+      if(nlpBlocksNext) {
+        // Set up follow-up questions
+        if(!claimState.incident.where) {
+          document.getElementById('fup-q1').textContent = "What was the exact location / road name?";
+          document.getElementById('followUpInput').placeholder = "e.g. NH-48 near Mahipalpur";
+          document.getElementById('fup-loc-wrap').style.display = 'block';
+        } else {
+          document.getElementById('fup-loc-wrap').style.display = 'none';
+        }
+        if(claimState.incident.type === 'Vehicle Collision' || claimState.incident.type === 'Vehicle Theft') {
+          document.getElementById('fup-fir-wrap').style.display = 'block';
+        }
+        navTo(5);
+        runVoiceBot("Please enter the missing location details.");
+      } else {
+        // All good — go to policy lookup
+        navTo(6);
+      }
+    }
+
+    // ─── Follow-up validation ───
+    function validateFollowUp() {
+      const locWrap = document.getElementById('fup-loc-wrap');
+      if(locWrap.style.display !== 'none') {
+        const val = document.getElementById('followUpInput').value.trim();
+        if(val.length < 3) {
+          showToast("Please enter a location to continue.", true);
+          document.getElementById('followUpInput').style.borderColor = 'var(--danger)';
+          return;
+        }
+        claimState.incident.where = val;
+        document.getElementById('followUpInput').style.borderColor = '';
+      }
+      const fir = document.getElementById('firInput').value;
+      if(fir) claimState.conditional.firFiled = fir;
+      showToast("Details saved.");
+      navTo(6);
+    }
+
+    // ─── Policy lookup ───
+    async function lookupPolicy() {
+      const id = document.getElementById('simIdentifier').value.trim();
+      if(!id) { showToast("Please enter a mobile or policy number.", true); return; }
+      showToast("Looking up your policy...");
+      try {
+        const ctx = await window.triggerClaimAutoFill('mobile', id);
+        if(ctx) {
+          claimState.user    = ctx.identity;
+          claimState.policy  = ctx.policy;
+          claimState.vehicle = ctx.vehicle;
+          document.getElementById('af-name').textContent = ctx.identity.name;
+          document.getElementById('af-veh').textContent  = ctx.vehicle.make_model;
+          document.getElementById('af-pol').textContent  = ctx.policy.number;
+          document.getElementById('af-ins').textContent  = ctx.policy.insurer;
+          navTo(7);
+          runVoiceBot("Policy found. Please confirm your details.");
+        } else {
+          showToast("Not found. Try: 9876543210 or 9123456789", true);
+        }
+      } catch(e) {
+        showToast("Lookup failed. Try: 9876543210", true);
+      }
+    }
+
+    // ─── Document upload ───
+    function docUpload(el, key, statusId) {
+      if(!el.files.length) return;
+      const file = el.files[0];
+      const progressEl = document.getElementById('up-' + key);
+      document.getElementById(statusId).textContent = "Uploading...";
+      gsap.to(progressEl, { width: "100%", duration: 1.2, ease: "power2.out", onComplete: () => {
+        claimState.documents[key] = file.name;
+        document.getElementById(statusId).textContent = "✓ " + file.name.substring(0, 18);
+        document.getElementById(statusId).style.color = "var(--success)";
+      }});
+    }
+
+    // ─── Summary ───
+    function renderSummary() {
+      const r = document.getElementById('summary-render');
+      const sec = (title, data) => {
+        let rows = '';
+        for(const [k,v] of Object.entries(data)) {
+          if(v) rows += `<div class="summary-kv"><span class="sk">${k}</span><span>${v}</span></div>`;
+        }
+        return rows ? `<div class="summary-section"><div class="summary-header">${title}</div><div class="summary-body">${rows}</div></div>` : '';
+      };
+      let html = '';
+      html += sec('Policy', { Name: claimState.user?.name, 'Policy No': claimState.policy?.number, Insurer: claimState.policy?.insurer });
+      html += sec('Vehicle', { Vehicle: claimState.vehicle?.make_model });
+      html += sec('Incident', {
+        Type: claimState.incident.type,
+        Severity: claimState.incident.severity,
+        Location: claimState.incident.where,
+        When: claimState.incident.when
+      });
+      html += sec('AI Metrics', {
+        Completeness: claimState.nlp.completeness + '%',
+        'Fraud Risk': 'Low'
+      });
+      html += sec('Documents', {
+        RC: claimState.documents.rc,
+        'Driving Licence': claimState.documents.dl,
+        Photos: claimState.documents.photos
+      });
+      r.innerHTML = html;
+    }
+
+    // ─── Final submit ───
+    function finalSubmit() {
+      const btn = document.getElementById('btnFinalSubmit');
+      btn.textContent = "Posting to ledger...";
+      btn.style.opacity = '0.7';
+      btn.style.pointerEvents = 'none';
+      runVoiceBot("Committing your claim to the IRDAI ledger.");
+      setTimeout(() => {
+        const claim = {
+          id: 'CLM-' + Math.floor(Math.random()*90000 + 10000),
+          policyNumber: claimState.policy?.number || 'UNK-POLICY',
+          incidentType: claimState.incident.type || 'Unknown',
+          date: claimState.incident.when || new Date().toLocaleDateString(),
+          status: 'Under Review',
+          amount: 'Pending Assessment',
+          summary: claimState.incident.description || 'No description',
+          documents: Object.values(claimState.documents).filter(Boolean)
+        };
+        document.getElementById('finalClaimId').textContent = claim.id;
+        let claims = JSON.parse(localStorage.getItem('user_claims') || '[]');
+        claims.unshift(claim);
+        localStorage.setItem('user_claims', JSON.stringify(claims));
+        runVoiceBot(`Claim ${claim.id} has been successfully submitted.`);
+        navTo(10);
+      }, 1800);
+    }
+
+    // ─── Toast ───
+    let toastTimer;
+    function showToast(msg, err=false) {
+      clearTimeout(toastTimer);
+      const t = document.getElementById('toast');
+      t.classList.remove('show');
+      document.getElementById('tmsg').textContent = msg;
+      t.querySelector('.toast-dot').style.background = err ? 'var(--danger)' : 'var(--orange)';
+      void t.offsetWidth;
+      t.classList.add('show');
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+  </script>
+
+  <!-- Voiceflow Widget (untouched) -->
+  <script type="text/javascript">
+    (function(d, t) {
+      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+      v.onload = function() {
+        window.voiceflow.chat.load({
+          verify: { projectID: '69e1b38618d5b8d8b666412e' },
+          url: 'https://general-runtime.voiceflow.com',
+          versionID: 'production',
+          voice: { url: "https://runtime-api.voiceflow.com" }
+        });
+      }
+      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
+    })(document, 'script');
+  </script>
+
+</body>
+</html>

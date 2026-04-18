@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clamp - Access Nexus</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body { font-family: 'Montserrat', sans-serif; background: #010205; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; perspective: 2000px; }
+
+    #page-overlay { position: fixed; inset: 0; background: #010205; z-index: 9999; pointer-events: none; opacity: 1; }
+
+    .nav-brand { position: absolute; top: 40px; left: 40px; z-index: 100; font-weight: 600; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; cursor: pointer; color:#fff; transition: 0.3s; }
+    .nav-brand:hover { opacity: 0.8; }
+    .nav-brand-dot { width: 8px; height: 8px; background: #8eAAff; border-radius: 50%; box-shadow: 0 0 12px #8eAAff; }
+
+    body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(142, 170, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(142, 170, 255, 0.05) 1px, transparent 1px); background-size:60px 60px; animation:gridDrift 20s linear infinite; pointer-events:none; z-index: -2; }
+    @keyframes gridDrift { from{background-position:0 0;} to{background-position:60px 60px;} }
+
+    .mesh-glow { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 10% 40%, rgba(90, 125, 255, 0.08), transparent 50%), radial-gradient(circle at 90% 60%, rgba(130, 90, 255, 0.06), transparent 50%); filter: blur(40px); }
+
+    /* Card Wrapper */
+    #mag-wrap { position: relative; transition: transform 0.1s ease-out; transform-style: preserve-3d; }
+
+    /* Core Card */
+    .card { position: relative; width: 900px; height: 540px; border-radius: 28px; overflow: hidden; border: 1px solid rgba(142, 170, 255, 0.2); box-shadow: 0 40px 80px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05); background: rgba(10, 14, 23, 0.6); backdrop-filter: blur(40px); }
+
+    /* Teal Split */
+    .teal { position: absolute; inset: 0; background: linear-gradient(140deg, #10162a 0%, #1c2b59 40%, #5a7dff 100%); z-index: 1; clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); animation: tealReveal 1.4s cubic-bezier(0.86,0,0.07,1) 0.1s forwards; will-change: clip-path; }
+    @keyframes tealReveal { 0% {clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);} 100%{clip-path: polygon(47% 0%, 100% 0%, 100% 100%, 47% 100%);} }
+    .teal::after { content: ''; position: absolute; inset: 0; background: linear-gradient(130deg, rgba(255,255,255,0.1) 0%, transparent 50%); pointer-events: none; }
+
+    .glow-line { position: absolute; top: 0; bottom: 0; left: 47%; width: 2px; background: linear-gradient(180deg, transparent 0%, #8eAAff 20%, #5a7dff 50%, #8eAAff 80%, transparent 100%); transform: skewX(-5deg); box-shadow: 0 0 20px #8eAAff, 0 0 8px #5a7dff; z-index: 20; animation: lineReveal 1.4s cubic-bezier(0.86,0,0.07,1) 0.1s forwards; opacity: 0; }
+    @keyframes lineReveal { 0% {left:100%;opacity:0;} 60% {opacity:1;} 100%{left:47%;opacity:1;} }
+
+    /* Welcome Text */
+    .welcome { position: absolute; right: 0; top: 0; bottom: 0; width: 53%; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; }
+    .welcome-inner { text-align: center; }
+    .welcome h2 { font-size: 2.8rem; font-weight: 800; letter-spacing: 2px; line-height: 1.15; color: #fff; text-shadow: 0 0 40px rgba(142, 170, 255, 0.4); animation: wFadeIn 0.6s ease 1.5s both; }
+    .welcome p { font-size: 0.8rem; letter-spacing: 3px; font-weight: 500; color: rgba(200, 220, 255, 0.8); margin-top: 12px; animation: wFadeIn 0.6s ease 1.7s both; }
+    @keyframes wFadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+    /* Form Side */
+    .form-side { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; z-index: 15; display: flex; flex-direction: column; justify-content: center; padding: 0 48px; animation: formSlideIn 0.7s cubic-bezier(0.22,1,0.36,1) 1.4s both; }
+    @keyframes formSlideIn { from{opacity:0; transform:translateX(-24px);} to{opacity:1; transform:translateX(0);} }
+
+    .form-title { font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; color: #fff; margin-bottom: 32px; position: relative; }
+    .form-title::after { content: ''; display: block; width: 40px; height: 3px; background: linear-gradient(90deg, #8eAAff, #5a7dff); border-radius: 2px; margin-top: 10px; box-shadow: 0 0 10px rgba(142,170,255,0.5); }
+
+    .field { position: relative; margin-bottom: 26px; }
+    .field input { width: 100%; background: transparent; border: none; border-bottom: 1.5px solid rgba(142,170,255,0.2); color: #fff; font-family: 'Montserrat', sans-serif; font-size: 0.95rem; font-weight: 500; padding: 12px 40px 10px 0; outline: none; transition: 0.3s; }
+    .field input::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
+    .field input:focus { border-bottom-color: #8eAAff; box-shadow: 0 4px 12px rgba(142,170,255,0.05); }
+
+    .field-icon { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: rgba(142,170,255,0.6); pointer-events: none; }
+    .eye-btn { position: absolute; right: 32px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgba(142,170,255,0.6); transition: color 0.2s; font-size: 1rem; }
+    .eye-btn:hover { color: #8eAAff; }
+
+    .btn-wrap { position: relative; margin-top: 12px; margin-bottom: 10px; padding: 10px; margin-left: -10px; margin-right: -10px; border-radius: 60px; }
+    .cta { width: 100%; padding: 16px 0; background: #fff; color: #010205; border: none; border-radius: 50px; font-family: 'Montserrat', sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 8px 24px rgba(255,255,255,0.1); position: relative; overflow: hidden; }
+    .btn-wrap:hover .cta { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(255,255,255,0.25); }
+    .cta:active { transform: scale(0.97); }
+
+    .bottom-link { margin-top: 24px; text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.5); font-weight: 500; }
+    .bottom-link a { color: #8eAAff; font-weight: 700; text-decoration: none; margin-left: 6px; cursor: pointer; transition: 0.2s; }
+    .bottom-link a:hover { text-shadow: 0 0 10px rgba(142,170,255,0.6); }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(10, 14, 23, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(142,170,255,0.3); border-radius: 50px; padding: 14px 32px; display: flex; align-items: center; gap: 12px; font-family: 'Montserrat', sans-serif; font-size: 0.85rem; font-weight: 500; color: #fff; opacity: 0; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9999; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast-dot { width: 8px; height: 8px; border-radius: 50%; background: #8eAAff; box-shadow: 0 0 10px #8eAAff; flex-shrink: 0; }
+    .toast.err .toast-dot { background: #ff6b6b; box-shadow: 0 0 10px #ff6b6b; }
+
+    /* Splitting Animations */
+    .form-side.exit-to-left { animation: exitLeft 0.35s cubic-bezier(0.4,0,1,1) forwards; }
+    .form-side.exit-to-right { animation: exitRight 0.35s cubic-bezier(0.4,0,1,1) forwards; }
+    .form-side.enter-from-right { animation: enterFromRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .form-side.enter-from-left { animation: enterFromLeft 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    @keyframes exitLeft { from{opacity:1; transform:translateX(0) skewX(0deg);} to{opacity:0; transform:translateX(-40px) skewX(-2deg);} }
+    @keyframes exitRight { from{opacity:1; transform:translateX(0) skewX(0deg);} to{opacity:0; transform:translateX(40px) skewX(2deg);} }
+    @keyframes enterFromRight { from{opacity:0; transform:translateX(40px) skewX(2deg);} to{opacity:1; transform:translateX(0) skewX(0deg);} }
+    @keyframes enterFromLeft { from{opacity:0; transform:translateX(-40px) skewX(-2deg);} to{opacity:1; transform:translateX(0) skewX(0deg);} }
+
+    .teal.to-left { animation: tealToLeft 0.9s cubic-bezier(0.86,0,0.07,1) forwards; }
+    @keyframes tealToLeft { from{clip-path:polygon(47% 0%, 100% 0%, 100% 100%, 47% 100%);} to{clip-path:polygon(0% 0%, 53% 0%, 53% 100%, 0% 100%);} }
+    .teal.to-right { animation: tealToRight 0.9s cubic-bezier(0.86,0,0.07,1) forwards; }
+    @keyframes tealToRight { from{clip-path:polygon(0% 0%, 53% 0%, 53% 100%, 0% 100%);} to{clip-path:polygon(47% 0%, 100% 0%, 100% 100%, 47% 100%);} }
+
+    .glow-line.to-left { animation: lineToLeft 0.9s cubic-bezier(0.86,0,0.07,1) forwards; }
+    @keyframes lineToLeft { from{left:47%;} to{left:53%;} }
+    .glow-line.to-right { animation: lineToRight 0.9s cubic-bezier(0.86,0,0.07,1) forwards; }
+    @keyframes lineToRight { from{left:53%;} to{left:47%;} }
+
+    @media(max-width:768px){ .card{width:96vw; height:auto; min-height:450px;} .teal,.glow-line,.welcome{display:none;} .form-side{width:100%; padding:40px 32px; position:relative; animation:none;} }
+  </style>
+</head>
+<body>
+
+<div id="page-overlay"></div>
+<div class="mesh-glow"></div>
+
+<header style="position:absolute; top:0; width:100%; padding:32px 48px; display:flex; justify-content:space-between; align-items:center; z-index:100;">
+   <div style="cursor:pointer;" onclick="transitionTo('index.html')"><img src="logo/clamp logo.png" alt="Clamp" style="height:40px; object-fit:contain;"></div>
+   <div class="nav-links" style="display:flex; gap:40px; align-items:center; font-size:0.9rem; font-weight:500;">
+       <a href="dashboard.html" style="color:rgba(255,255,255,0.6); text-decoration:none; transition:0.3s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">Claim Tracker</a>
+       <a href="fnol_flow.html" style="color:rgba(255,255,255,0.6); text-decoration:none; transition:0.3s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">FNOL System</a>
+       <a href="analyzer.html" style="color:rgba(255,255,255,0.6); text-decoration:none; transition:0.3s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">Policy Analyzer</a>
+       <a href="compare.html" style="color:rgba(255,255,255,0.6); text-decoration:none; transition:0.3s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.6)'">Policy Compare</a>
+   </div>
+</header>
+
+<div id="mag-wrap">
+  <div class="card" id="card">
+    <div class="teal" id="teal"></div>
+    <div class="glow-line" id="glowLine"></div>
+
+    <div class="welcome" id="welcome">
+      <div class="welcome-inner">
+        <h2 id="welcomeH">WELCOME<br>BACK!</h2>
+        <p id="welcomeP">ACCESS THE CLAMP NEXUS</p>
+      </div>
+    </div>
+
+    <div class="form-side" id="formSide">
+      <div class="form-title" id="formTitle">Access Matrix</div>
+
+      <div id="loginFields">
+        <div class="field">
+          <input type="text" id="lu" placeholder="Agent ID / Email" autocomplete="username">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="field">
+          <input type="password" id="lp" placeholder="Security Key" autocomplete="current-password">
+          <button class="eye-btn" data-t="lp">👁</button>
+          <svg class="field-icon" style="right:32px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="btn-wrap magnetic" onmousemove="magnetize(event, this)" onmouseleave="demagnetize(this)">
+            <button class="cta" id="btnLogin">SYNCHRONIZE</button>
+        </div>
+        <div class="bottom-link">Not registered in system?<a id="toReg">Initialize Identity</a></div>
+      </div>
+
+      <div id="regFields" style="display:none">
+        <div class="field">
+          <input type="text" id="ru" placeholder="Full Name">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="field">
+          <input type="email" id="re" placeholder="Email Address">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="field">
+          <input type="password" id="rp" placeholder="Create Key">
+          <button class="eye-btn" data-t="rp">👁</button>
+          <svg class="field-icon" style="right:32px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="btn-wrap magnetic" onmousemove="magnetize(event, this)" onmouseleave="demagnetize(this)">
+            <button class="cta" id="btnReg">CREATE NODE</button>
+        </div>
+        <div class="bottom-link">Identity exists?<a id="toLog">Execute Login</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-dot"></span><span id="tmsg"></span></div>
+
+<script>
+gsap.to('#page-overlay', { opacity: 0, duration: 1.2, ease: "cubic-bezier(0.16, 1, 0.3, 1)" });
+gsap.from("#mag-wrap", { y: +40, scale: 0.95, opacity: 0, duration: 1.2, ease: "cubic-bezier(0.16, 1, 0.3, 1)", delay: 0.2 });
+
+const wrap = document.getElementById('mag-wrap');
+document.addEventListener('mousemove', (e) => {
+   const mX = (e.clientX / window.innerWidth) - 0.5, mY = (e.clientY / window.innerHeight) - 0.5;
+   wrap.style.transform = `rotateY(${mX * 10}deg) rotateX(${-mY * 10}deg)`;
+});
+document.addEventListener('mouseleave', () => { wrap.style.transform = `rotateY(0deg) rotateX(0deg)`; });
+
+function magnetize(e, el) {
+   const rect = el.getBoundingClientRect(), btn = el.querySelector('.cta');
+   gsap.to(btn, { x: (e.clientX - rect.left - rect.width/2)*0.3, y: (e.clientY - rect.top - rect.height/2)*0.3, duration: 0.4, ease: "power2.out" });
+}
+function demagnetize(el) { gsap.to(el.querySelector('.cta'), { x: 0, y: 0, duration: 0.6, ease: "cubic-bezier(0.16, 1, 0.3, 1)" }); }
+
+function transitionTo(url) { gsap.to('#page-overlay', { opacity: 1, duration: 0.8, ease: "cubic-bezier(0.16, 1, 0.3, 1)", onComplete: () => { window.location.href = url; }}); }
+
+const formSide = document.getElementById('formSide');
+const loginFields = document.getElementById('loginFields'), regFields = document.getElementById('regFields');
+const teal = document.getElementById('teal'), glowLine = document.getElementById('glowLine'), welcome = document.getElementById('welcome');
+let mode = 'login'; let toastTimer;
+
+function showToast(msg, err=false){
+  clearTimeout(toastTimer); const t = document.getElementById('toast');
+  t.classList.remove('show','err'); document.getElementById('tmsg').textContent = msg;
+  if(err) t.classList.add('err');
+  void t.offsetWidth; t.classList.add('show');
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+function switchForm(to){
+  if(to === mode) return;
+  const goingToReg = to === 'register';
+  teal.className = 'teal ' + (goingToReg ? 'to-left' : 'to-right');
+  glowLine.className = 'glow-line ' + (goingToReg ? 'to-left' : 'to-right');
+
+  welcome.style.opacity = '0'; welcome.style.transition = 'opacity 0.25s';
+  setTimeout(()=>{
+    document.getElementById('welcomeH').innerHTML = goingToReg ? 'SYSTEM<br>ENTRY' : 'WELCOME<br>BACK!';
+    document.getElementById('welcomeP').textContent = goingToReg ? 'INITIALIZE NEW IDENTITY' : 'ACCESS THE CLAMP NEXUS';
+    welcome.style.right = goingToReg ? 'auto' : '0'; welcome.style.left = goingToReg ? '0' : 'auto';
+    welcome.style.opacity = '1';
+  }, 450);
+
+  const exitClass = goingToReg ? 'exit-to-left' : 'exit-to-right', enterClass = goingToReg ? 'enter-from-right' : 'enter-from-left';
+  formSide.classList.add(exitClass);
+  setTimeout(()=>{
+    formSide.classList.remove(exitClass);
+    if(goingToReg){
+      loginFields.style.display = 'none'; regFields.style.display = 'block';
+      document.getElementById('formTitle').textContent = 'Initialization';
+      formSide.style.left = 'auto'; formSide.style.right = '0';
+    } else {
+      regFields.style.display = 'none'; loginFields.style.display = 'block';
+      document.getElementById('formTitle').textContent = 'Access Matrix';
+      formSide.style.right = 'auto'; formSide.style.left = '0';
+    }
+    formSide.classList.add(enterClass);
+    formSide.addEventListener('animationend',()=>formSide.classList.remove(enterClass),{once:true});
+  }, 360);
+  mode = to;
+}
+
+document.getElementById('toReg').addEventListener('click', e=>{ e.preventDefault(); switchForm('register'); });
+document.getElementById('toLog').addEventListener('click', e=>{ e.preventDefault(); switchForm('login'); });
+
+document.querySelectorAll('.eye-btn').forEach(btn=>{
+  btn.addEventListener('click', e=>{ e.preventDefault(); const inp = document.getElementById(btn.dataset.t); inp.type = inp.type === 'password' ? 'text' : 'password'; btn.textContent = inp.type === 'password' ? '👁' : '🙈'; });
+});
+
+document.getElementById('btnLogin').addEventListener('click', function(e){
+  const u = document.getElementById('lu').value.trim(), p = document.getElementById('lp').value.trim();
+  if(!u || !p){ showToast('Authentication Failure', true); return; }
+  
+  // Set User Profile to Local Storage
+  localStorage.setItem('clamp_user', u);
+  
+  this.innerHTML = "SYNCHRONIZING..."; showToast('Verified. Linking to Neural Dashboard...');
+  setTimeout(() => transitionTo('dashboard.html'), 1500);
+});
+
+document.getElementById('btnReg').addEventListener('click', function(e){
+  const ru = document.getElementById('ru').value.trim(); 
+  if(ru) localStorage.setItem('clamp_user', ru);
+
+  this.innerHTML = "COMMITTING..."; showToast('Node Genesis Complete. Initializing...');
+  setTimeout(()=>{ this.innerHTML = "CREATE NODE"; switchForm('login'); }, 1500);
+});
+</script>
+</body>
+</html>

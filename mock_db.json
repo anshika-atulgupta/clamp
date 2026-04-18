@@ -1,0 +1,205 @@
+{
+  "users": [
+    {
+      "user_details": {
+        "full_name": "Rahul Sharma",
+        "gender": "Male",
+        "date_of_birth": "1985-04-12",
+        "aadhaar": {
+          "masked": "XXXX-XXXX-1234",
+          "full": "987654321234"
+        },
+        "pan_number": "ABCDE1234F",
+        "mobile_number": "9876543210",
+        "email_address": "rahul.sharma@example.com",
+        "address": {
+          "street": "101, Palm Grove Apartments",
+          "area": "Andheri West",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "pincode": "400053"
+        }
+      },
+      "policy_details": {
+        "policy_number": "POL-IND-2026-883921",
+        "insurer_name": "ICICI Lombard",
+        "policy_type": "Comprehensive",
+        "policy_start_date": "2025-01-15",
+        "policy_end_date": "2026-01-14",
+        "premium_amount": 14500,
+        "idv": 450000,
+        "addons": [
+          "Zero Depreciation",
+          "Engine Protection"
+        ]
+      },
+      "vehicle_details": {
+        "vehicle_type": "Car",
+        "manufacturer": "Hyundai",
+        "model": "i20",
+        "variant": "Asta",
+        "registration_number": "MH02AB1234",
+        "registration_date": "2020-03-10",
+        "engine_number": "G4LA1234567890",
+        "chassis_number": "MAL1234567890123",
+        "fuel_type": "Petrol",
+        "color": "Fiery Red"
+      },
+      "driver_details": {
+        "driver_name": "Rahul Sharma",
+        "driving_license_number": "MH0220101234567",
+        "license_issue_date": "2010-05-20",
+        "license_expiry_date": "2030-05-19"
+      },
+      "claim_history": {
+        "total_claims": 0,
+        "claims": []
+      },
+      "documents": {
+        "rc_copy_id": "DOC-RC-MH02AB1234",
+        "dl_copy_id": "DOC-DL-MH0220101234567",
+        "insurance_policy_id": "DOC-POL-883921",
+        "fir_number": null,
+        "image_urls": []
+      },
+      "search_index": {
+        "policy_number": "POL-IND-2026-883921",
+        "aadhaar_number": "987654321234",
+        "mobile_number": "9876543210"
+      }
+    },
+    {
+      "user_details": {
+        "full_name": "Priya Patel",
+        "gender": "Female",
+        "date_of_birth": "1990-11-25",
+        "aadhaar": {
+          "masked": "XXXX-XXXX-5678",
+          "full": "123456785678"
+        },
+        "pan_number": "PQRST5678G",
+        "mobile_number": "9123456789",
+        "email_address": "priya.patel@example.com",
+        "address": {
+          "street": "45, Residency Road",
+          "area": "Shanthala Nagar",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "pincode": "560025"
+        }
+      },
+      "policy_details": {
+        "policy_number": "POL-IND-2026-774810",
+        "insurer_name": "HDFC Ergo",
+        "policy_type": "Comprehensive",
+        "policy_start_date": "2025-06-01",
+        "policy_end_date": "2026-05-31",
+        "premium_amount": 18200,
+        "idv": 650000,
+        "addons": [
+          "Zero Depreciation",
+          "Roadside Assistance"
+        ]
+      },
+      "vehicle_details": {
+        "vehicle_type": "Car",
+        "manufacturer": "Tata",
+        "model": "Nexon",
+        "variant": "XZA+",
+        "registration_number": "KA01XY9876",
+        "registration_date": "2022-08-15",
+        "engine_number": "REV12345678901",
+        "chassis_number": "MAT1234567890123",
+        "fuel_type": "Diesel",
+        "color": "Foliage Green"
+      },
+      "driver_details": {
+        "driver_name": "Priya Patel",
+        "driving_license_number": "KA0120159876543",
+        "license_issue_date": "2015-02-10",
+        "license_expiry_date": "2035-02-09"
+      },
+      "claim_history": {
+        "total_claims": 0,
+        "claims": []
+      },
+      "documents": {
+        "rc_copy_id": "DOC-RC-KA01XY9876",
+        "dl_copy_id": "DOC-DL-KA0120159876543",
+        "insurance_policy_id": "DOC-POL-774810",
+        "fir_number": null,
+        "image_urls": []
+      },
+      "search_index": {
+        "policy_number": "POL-IND-2026-774810",
+        "aadhaar_number": "123456785678",
+        "mobile_number": "9123456789"
+      }
+    },
+    {
+      "user_details": {
+        "full_name": "Amit Singh",
+        "gender": "Male",
+        "date_of_birth": "1982-07-08",
+        "aadhaar": {
+          "masked": "XXXX-XXXX-9012",
+          "full": "456789019012"
+        },
+        "pan_number": "XYZAB9012H",
+        "mobile_number": "9988776655",
+        "email_address": "amit.singh@example.com",
+        "address": {
+          "street": "21, Vasant Vihar",
+          "area": "Vasant Vihar",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "pincode": "110057"
+        }
+      },
+      "policy_details": {
+        "policy_number": "POL-IND-2026-665992",
+        "insurer_name": "Tata AIG",
+        "policy_type": "Third-party",
+        "policy_start_date": "2025-03-10",
+        "policy_end_date": "2026-03-09",
+        "premium_amount": 3500,
+        "idv": 200000,
+        "addons": []
+      },
+      "vehicle_details": {
+        "vehicle_type": "Car",
+        "manufacturer": "Maruti Suzuki",
+        "model": "Swift",
+        "variant": "VXI",
+        "registration_number": "DL03CD4567",
+        "registration_date": "2016-05-12",
+        "engine_number": "K12M1234567890",
+        "chassis_number": "MA31234567890123",
+        "fuel_type": "Petrol",
+        "color": "Solid White"
+      },
+      "driver_details": {
+        "driver_name": "Amit Singh",
+        "driving_license_number": "DL0320054567890",
+        "license_issue_date": "2005-09-15",
+        "license_expiry_date": "2025-09-14"
+      },
+      "claim_history": {
+        "total_claims": 0,
+        "claims": []
+      },
+      "documents": {
+        "rc_copy_id": "DOC-RC-DL03CD4567",
+        "dl_copy_id": "DOC-DL-DL0320054567890",
+        "insurance_policy_id": "DOC-POL-665992",
+        "fir_number": "FIR-DL-2022-441-A",
+        "image_urls": []
+      },
+      "search_index": {
+        "policy_number": "POL-IND-2026-665992",
+        "aadhaar_number": "456789019012",
+        "mobile_number": "9988776655"
+      }
+    }
+  ]
+}

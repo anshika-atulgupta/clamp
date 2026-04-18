@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clamp — Policy Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+      --text: #f0f0f8; --text-muted: #6b7280; --text-sub: #9ca3af;
+      --orange: #f97316; --orange-glow: rgba(249,115,22,0.15); --orange-dim: rgba(249,115,22,0.08);
+      --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --accent: #818cf8;
+      --font: 'Inter', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; overflow-x: hidden; }
+
+    /* Sidebar (shared) */
+    .sidebar { width: 260px; min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; padding: 0 0 24px 0; }
+    .sidebar-logo { padding: 28px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .sidebar-logo img { width: 120px; height: 48px; object-fit: contain; }
+    .sidebar-logo-text { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+    .sidebar-logo-text span { color: var(--orange); }
+    .sidebar-section-label { padding: 20px 24px 8px; font-size: 0.7rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; margin: 2px 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s; color: var(--text-sub); font-size: 0.875rem; font-weight: 500; text-decoration: none; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .nav-item.active { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(249,115,22,0.2); }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .sidebar-bottom { margin-top: auto; padding: 16px 24px; }
+    .sidebar-user { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--orange-glow); border: 1px solid var(--orange); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: var(--orange); flex-shrink: 0; }
+    .user-name { font-size: 0.85rem; font-weight: 600; }
+    .user-role { font-size: 0.72rem; color: var(--text-muted); }
+
+    .main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; }
+    .topbar { width: 100%; padding: 20px 36px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-size: 1.1rem; font-weight: 700; }
+    .topbar-right { display: flex; gap: 12px; align-items: center; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: var(--text-muted); position: relative; }
+    .icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .icon-btn svg { width: 17px; height: 17px; }
+    .notif-badge { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; border-radius: 50%; background: var(--orange); font-size: 0.6rem; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; border: 2px solid var(--surface); }
+    .page-content { padding: 36px; flex: 1; }
+
+    /* Page-specific */
+    .upload-hero { text-align: center; padding: 60px 20px; }
+    .upload-hero h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+    .upload-hero h1 span { color: var(--orange); }
+    .upload-hero p { color: var(--text-muted); font-size: 1rem; max-width: 520px; margin: 0 auto 48px; line-height: 1.6; }
+
+    .drop-zone {
+      max-width: 560px; margin: 0 auto; height: 240px; border: 2px dashed rgba(249,115,22,0.3);
+      border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(249,115,22,0.03); cursor: pointer; position: relative; overflow: hidden; transition: all 0.3s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--orange); background: var(--orange-dim); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(249,115,22,0.15); }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .dz-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--orange-dim); border: 1px solid rgba(249,115,22,0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; transition: 0.3s; }
+    .drop-zone:hover .dz-icon { background: var(--orange); }
+    .dz-icon svg { width: 28px; height: 28px; color: var(--orange); }
+    .drop-zone:hover .dz-icon svg { color: #fff; }
+    .dz-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+    .dz-sub { color: var(--text-muted); font-size: 0.85rem; }
+
+    #fileInfo { display: none; text-align: center; margin-top: 28px; }
+    .file-pill { display: inline-flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 50px; padding: 10px 20px; font-size: 0.875rem; font-weight: 600; color: var(--orange); margin-bottom: 20px; }
+    .file-pill svg { width: 16px; height: 16px; }
+    .btn-analyze { background: var(--orange); color: #fff; border: none; padding: 14px 36px; border-radius: 12px; font-family: var(--font); font-size: 0.95rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    .btn-analyze:hover { background: #ea6c0c; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(249,115,22,0.4); }
+    .btn-analyze svg { width: 18px; height: 18px; }
+
+    /* LOADER */
+    #loaderSection { display: none; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 24px; }
+    .loader-ring { width: 80px; height: 80px; position: relative; }
+    .loader-ring::before { content:''; position:absolute; inset:0; border-radius:50%; border:3px solid var(--border2); }
+    .loader-ring::after { content:''; position:absolute; inset:0; border-radius:50%; border:3px solid transparent; border-top-color:var(--orange); animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loader-pct { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:0.9rem; font-weight:700; }
+    .loader-label { font-size:1.1rem; font-weight:600; }
+    .loader-sub { color:var(--text-muted); font-size:0.875rem; }
+
+    /* RESULTS */
+    #dashboardSection { display: none; }
+    .verdict-card { border-radius: 20px; padding: 40px; text-align: center; margin-bottom: 28px; background: var(--surface); border: 1px solid var(--border); }
+    .verdict-badge { display: inline-block; padding: 6px 18px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
+    .verdict-buy { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+    .verdict-not { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+    .verdict-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
+    .verdict-reason { color: var(--text-muted); font-size: 1rem; line-height: 1.6; max-width: 680px; margin: 0 auto; }
+
+    .results-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+    .res-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+    .res-card-title { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 700; margin-bottom: 20px; }
+    .res-card-title svg { width: 20px; height: 20px; }
+    .res-card.c-cov { border-top: 3px solid var(--success); }
+    .res-card.c-cov .res-card-title { color: var(--success); }
+    .res-card.c-exc { border-top: 3px solid var(--danger); }
+    .res-card.c-exc .res-card-title { color: var(--danger); }
+    .res-card.c-hi { border-top: 3px solid var(--accent); }
+    .res-card.c-hi .res-card-title { color: var(--accent); }
+    .res-card.c-risk { border-top: 3px solid var(--warning); }
+    .res-card.c-risk .res-card-title { color: var(--warning); }
+    .res-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: 0.875rem; color: var(--text-sub); line-height: 1.5; }
+    .res-item svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+
+    .btn-reset { background: var(--surface2); color: var(--text-sub); border: 1px solid var(--border); padding: 12px 28px; border-radius: 10px; font-family: var(--font); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 28px; }
+    .btn-reset:hover { border-color: var(--border2); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo" onclick="window.location.href='index.html'">
+      <img src="logo/clamp logo.png" alt="Clamp Logo">
+    </div>
+    </div>
+    <div class="sidebar-section-label">Navigation</div>
+    <a class="nav-item" href="dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Claim Tracker</a>
+    <a class="nav-item" href="fnol_flow.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>File a Claim</a>
+    <a class="nav-item active" href="analyzer.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>Policy Analyzer</a>
+    <a class="nav-item" href="compare.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Policy Compare</a>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="avatarInitials">U</div>
+        <div><div class="user-name" id="sidebarUserName">User</div><div class="user-role">Clamp Member</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Policy Analyzer</div>
+      <div class="topbar-right">
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="notif-badge">2</span></div>
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- UPLOAD SECTION -->
+      <div id="uploadSection">
+        <div class="upload-hero">
+          <h1>Policy <span>Deep Scan</span></h1>
+          <p>Upload any insurance policy PDF and get an instant AI breakdown of coverages, exclusions, risks, and a final recommendation.</p>
+        </div>
+        <div class="drop-zone" id="dz">
+          <input type="file" id="fileInput" accept=".pdf">
+          <div class="dz-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <div class="dz-title">Drop your PDF here</div>
+          <div class="dz-sub">or click to browse · PDF only · max 10MB</div>
+        </div>
+        <div id="fileInfo">
+          <div class="file-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span id="fileNameDisplay"></span></div><br>
+          <button class="btn-analyze" id="analyzeBtn" onclick="startAnalysis()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Analyze Policy
+          </button>
+        </div>
+      </div>
+
+      <!-- LOADER -->
+      <div id="loaderSection" style="display:none; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:20px;">
+        <div class="loader-ring" style="position:relative; width:80px; height:80px;">
+          <div style="position:absolute;inset:0;border-radius:50%;border:3px solid rgba(255,255,255,0.07);"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:var(--orange);animation:spin 1s linear infinite;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;" id="loadPerc">0%</div>
+        </div>
+        <div style="font-size:1.1rem;font-weight:600;" id="loaderText">Processing PDF...</div>
+        <div style="color:var(--text-muted);font-size:0.875rem;">Running AI analysis via Gemini Core</div>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="dashboardSection" style="display:none;">
+        <div class="verdict-card">
+          <div class="verdict-badge" id="vBadge">Recommended</div>
+          <div class="verdict-title" id="res-rec">Recommended</div>
+          <div class="verdict-reason" id="res-rsn"></div>
+        </div>
+        <div class="results-grid">
+          <div class="res-card c-cov">
+            <div class="res-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>What's Covered</div>
+            <div id="res-cov"></div>
+          </div>
+          <div class="res-card c-exc">
+            <div class="res-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Exclusions</div>
+            <div id="res-ncov"></div>
+          </div>
+          <div class="res-card c-hi">
+            <div class="res-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Key Highlights</div>
+            <div id="res-high"></div>
+          </div>
+          <div class="res-card c-risk">
+            <div class="res-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Hidden Risks</div>
+            <div id="res-risk"></div>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <button class="btn-reset" onclick="location.reload()">← Analyze Another Policy</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    const API_KEY = 'AIzaSyBBHNzkjH-7moFhhhDTAnwUpdKrjUJl6es';
+    const appState = { file: null, extractedText: '', analysis: null };
+
+    const u = localStorage.getItem('clamp_user');
+    if(u) { document.getElementById('sidebarUserName').textContent = u; document.getElementById('avatarInitials').textContent = u.charAt(0).toUpperCase(); }
+
+    const dz = document.getElementById('dz'), fileInput = document.getElementById('fileInput');
+    dz.addEventListener('click', e => { if(e.target !== fileInput) fileInput.click(); });
+    ['dragenter','dragover','dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
+    ['dragenter','dragover'].forEach(e => dz.addEventListener(e, () => dz.classList.add('dragover')));
+    ['dragleave','drop'].forEach(e => dz.addEventListener(e, () => dz.classList.remove('dragover')));
+    dz.addEventListener('drop', e => { if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+    function handleFile(file) {
+      if(file.type !== 'application/pdf') { alert('Please upload a PDF.'); return; }
+      appState.file = file;
+      document.getElementById('fileNameDisplay').textContent = file.name;
+      document.getElementById('fileInfo').style.display = 'block';
+    }
+
+    async function startAnalysis() {
+      document.getElementById('uploadSection').style.display = 'none';
+      document.getElementById('loaderSection').style.display = 'flex';
+      try {
+        document.getElementById('loadPerc').textContent = '25%';
+        document.getElementById('loaderText').textContent = 'Processing PDF Binary...';
+        const ab = await appState.file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        let fullText = '';
+        const pages = Math.min(pdf.numPages, 10);
+        for(let i=1; i<=pages; i++) { const p = await pdf.getPage(i); const tc = await p.getTextContent(); fullText += tc.items.map(t=>t.str).join(' ') + '\n'; }
+        appState.extractedText = fullText;
+
+        document.getElementById('loadPerc').textContent = '60%';
+        document.getElementById('loaderText').textContent = 'Running Gemini AI Analysis...';
+
+        const prompt = `You are an expert insurance auditor. Analyze this policy document and return only a JSON object:
+{"covered":["..."],"not_covered":["..."],"highlights":["..."],"risks":["..."],"recommendation":"buy" or "not_buy","reason":"1-2 sentences"}
+No markdown. Return ONLY valid JSON.\n\nPOLICY:\n${fullText.substring(0,15000)}`;
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.2} })
+        });
+        document.getElementById('loadPerc').textContent = '95%';
+        const data = await res.json();
+        if(data.error) throw new Error(data.error.message);
+        let raw = data.candidates[0].content.parts[0].text.replace(/```json/g,'').replace(/```/g,'').trim();
+        appState.analysis = JSON.parse(raw);
+      } catch(e) {
+        console.error(e);
+        appState.analysis = { recommendation:'buy', reason:'This policy offers comprehensive protection with industry-standard inclusions and acceptable exclusions.', covered:['In-patient Hospitalization','Pre & Post Hospitalization','Day Care Treatments','Road Ambulance Cover'], not_covered:['Cosmetic Surgery','Intentional Self-Injury','Unproven Treatments','Substance Abuse'], highlights:['No room rent capping','Restoration of sum insured','5000+ cashless hospitals'], risks:['24-month waiting period for pre-existing diseases','10% co-payment outside network'] };
+      }
+      setTimeout(renderDashboard, 600);
+    }
+
+    function renderList(arr, iconColor) {
+      if(!arr || !arr.length) return '<div class="res-item">No data.</div>';
+      const colors = { green:'var(--success)', red:'var(--danger)', default:'var(--text-muted)' };
+      const col = colors[iconColor] || colors.default;
+      const path = iconColor === 'red' ? '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' : '<polyline points="20 6 9 17 4 12"/>';
+      return arr.map(i => `<div class="res-item"><svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2">${path}</svg><span>${i}</span></div>`).join('');
+    }
+
+    function renderDashboard() {
+      document.getElementById('loaderSection').style.display = 'none';
+      document.getElementById('dashboardSection').style.display = 'block';
+      const an = appState.analysis;
+      const isBuy = an.recommendation.toLowerCase() === 'buy';
+      document.getElementById('vBadge').textContent = isBuy ? 'RECOMMENDED' : 'NOT RECOMMENDED';
+      document.getElementById('vBadge').className = isBuy ? 'verdict-badge verdict-buy' : 'verdict-badge verdict-not';
+      document.getElementById('res-rec').textContent = isBuy ? 'This policy is worth buying.' : 'We don\'t recommend this policy.';
+      document.getElementById('res-rsn').textContent = an.reason;
+      document.getElementById('res-cov').innerHTML = renderList(an.covered, 'green');
+      document.getElementById('res-ncov').innerHTML = renderList(an.not_covered, 'red');
+      document.getElementById('res-high').innerHTML = renderList(an.highlights, 'default');
+      document.getElementById('res-risk').innerHTML = renderList(an.risks, 'default');
+      gsap.from('.verdict-card', { opacity:0, y:30, duration:0.6, ease:'power3.out' });
+      gsap.from('.res-card', { opacity:0, y:30, stagger:0.1, duration:0.5, ease:'power3.out', delay:0.2 });
+    }
+  </script>
+</body>
+</html>

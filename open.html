@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clamp - Awakening</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #010205; font-family: 'Montserrat', sans-serif; }
+    #canvas-container { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+    
+    .vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, #010205 100%); z-index: 2; pointer-events: none; }
+    
+    #transition-overlay { position: fixed; inset: 0; background: #010205; z-index: 9999; opacity: 1; pointer-events: none; }
+
+    .cinema-container { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+    
+    .cinema-text {
+      position: absolute; color: #fff;
+      opacity: 0; transform: scale(0.98); filter: blur(24px);
+      background: linear-gradient(180deg, #FFFFFF 0%, rgba(142, 170, 255, 0.7) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    
+    #t-clamp { font-size: clamp(3rem, 6vw, 7rem); font-weight: 700; letter-spacing: 0.1em; }
+    #t-tag { font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 400; letter-spacing: 0.2em; margin-top: 120px; color: rgba(200,220,255,0.7); -webkit-text-fill-color: rgba(200,220,255,0.7); }
+    
+    #t1, #t2 { font-size: clamp(2rem, 3.5vw, 4rem); font-weight: 500; letter-spacing: -0.01em; }
+  </style>
+</head>
+<body>
+
+  <div id="transition-overlay"></div>
+  <div class="vignette"></div>
+  <div id="canvas-container"></div>
+  
+  <div class="cinema-container">
+    <div class="cinema-text" id="t-clamp">CLAMP</div>
+    <div class="cinema-text" id="t-tag">Advanced Claim Intelligence</div>
+    <div class="cinema-text" id="t1">Something happened?</div>
+    <div class="cinema-text" id="t2">We understand before you explain.</div>
+  </div>
+
+  <script>
+    gsap.to('#transition-overlay', { opacity: 0, duration: 2, ease: "power2.inOut" });
+
+    // Premium WebGL Background (Depth of field feel)
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x010205, 0.05);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 150);
+    camera.position.z = 30;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    const createLayer = (count, size, color, opacity) => {
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        for(let i=0; i<count; i++) {
+           pos[i*3] = (Math.random() - 0.5) * 60;
+           pos[i*3+1] = (Math.random() - 0.5) * 60;
+           pos[i*3+2] = (Math.random() - 0.5) * 80 - 20;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.PointsMaterial({ color, size, transparent: true, opacity, blending: THREE.AdditiveBlending });
+        return new THREE.Points(geo, mat);
+    };
+
+    const layer1 = createLayer(800, 0.05, 0x5a7dff, 0.6);
+    const layer2 = createLayer(1500, 0.15, 0x825aff, 0.3);
+    const layer3 = createLayer(2000, 0.25, 0xffffff, 0.1);
+    scene.add(layer1, layer2, layer3);
+
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', e => {
+       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+       mouseY = -(e.clientY / window.innerHeight) * 2 - 1;
+    });
+
+    let time = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.002;
+      layer1.rotation.y = time * 0.5; layer2.rotation.y = time * 0.3; layer3.rotation.y = time * 0.1;
+      camera.position.x += (mouseX * 4 - camera.position.x) * 0.02;
+      camera.position.y += (mouseY * 4 - camera.position.y) * 0.02;
+      camera.lookAt(scene.position);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+       camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+       renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Camera Drift
+    gsap.to(camera.position, { z: 10, duration: 12, ease: "power1.inOut" });
+
+    // Cinematic Sequence Logic
+    const easeStr = "cubic-bezier(0.16, 1, 0.3, 1)";
+    const tl = gsap.timeline({
+       onComplete: () => {
+          gsap.to('#transition-overlay', { opacity: 1, duration: 1.5, ease: "power2.inOut", onComplete: () => {
+             window.location.href = 'index.html';
+          }});
+       }
+    });
+
+    // 1. Reveal Project Name + Tagline
+    tl.to(['#t-clamp', '#t-tag'], { opacity: 1, filter: "blur(0px)", scale: 1, duration: 1.2, stagger: 0.15, ease: easeStr, delay: 0.2 })
+      .to(['#t-clamp', '#t-tag'], { opacity: 0, filter: "blur(12px)", scale: 1.1, duration: 0.8, ease: "power2.in" }, "+=0.8")
+      
+    // 2. Emotional Story
+      .to('#t1', { opacity: 1, filter: "blur(0px)", scale: 1, duration: 1.2, ease: easeStr })
+      .to('#t1', { opacity: 0, filter: "blur(12px)", scale: 1.05, duration: 0.8, ease: "power2.in" }, "+=0.6")
+      
+      .to('#t2', { opacity: 1, filter: "blur(0px)", scale: 1, duration: 1.2, ease: easeStr })
+      .to('#t2', { opacity: 0, filter: "blur(12px)", scale: 1.05, duration: 0.8, ease: "power2.in" }, "+=0.6");
+  </script>
+  
+  <!-- Voiceflow Integration -->
+  <script type="text/javascript">
+    (function(d, t) {
+        var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+        v.onload = function() {
+          window.voiceflow.chat.load({
+            verify: { projectID: '69e1b38618d5b8d8b666412e' },
+            url: 'https://general-runtime.voiceflow.com',
+            versionID: 'production',
+            voice: { url: "https://runtime-api.voiceflow.com" }
+          });
+        }
+        v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
+    })(document, 'script');
+  </script>
+</body>
+</html>
